@@ -64,6 +64,25 @@
             display: flex;
             flex-direction: column;
         }
+        #attachment-list {
+            margin-bottom: 1rem;
+        }
+        .attachment-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .attachment-item span {
+            flex: 1;
+        }
+        .remove-btn {
+            background: none;
+            border: none;
+            color: red;
+            cursor: pointer;
+            font-size: 1.2rem;
+            line-height: 1;
+        }
         button {
             padding: 0.75rem;
             background-color: #0073e6;
@@ -131,9 +150,10 @@
             <label for="deliveryAddress">Delivery Address</label>
             <textarea id="deliveryAddress" name="deliveryAddress" rows="2" required placeholder="e.g., C. Miguel Faraday, 1, 28906 Getafe, Madrid">C. Miguel Faraday, 1, 28906 Getafe, 28906 Getafe, Spain</textarea>
 
-                        <!-- Attachments -->
+            <!-- Attachments -->
             <label for="attachments">Attach PDF Documents (max total 10MB)</label>
             <input type="file" id="attachments" name="attachments" accept="application/pdf" multiple>
+            <div id="attachment-list"></div>
 
             <button type="submit" id="sendBtn" disabled>Generate Email</button>
         </form>
@@ -146,6 +166,10 @@
         const packagesContainer = document.getElementById('packages-container');
         const emailInput = document.getElementById('contactEmail');
         const phoneInput = document.getElementById('contactPhone');
+        const attachmentsInput = document.getElementById('attachments');
+        const attachmentList = document.getElementById('attachment-list');
+        const MAX_TOTAL_SIZE = 10 * 1024 * 1024; // 10MB
+        let dt = new DataTransfer();
 
         function renderPackages(count) {
             packagesContainer.innerHTML = '';
@@ -170,6 +194,41 @@
             }
         }
 
+        function updateAttachmentList() {
+            attachmentList.innerHTML = '';
+            Array.from(dt.files).forEach((file, index) => {
+                const item = document.createElement('div');
+                item.className = 'attachment-item';
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = file.name;
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'remove-btn';
+                removeBtn.textContent = '✖';
+                removeBtn.addEventListener('click', () => {
+                    dt.items.remove(index);
+                    attachmentsInput.files = dt.files;
+                    updateAttachmentList();
+                });
+                item.appendChild(nameSpan);
+                item.appendChild(removeBtn);
+                attachmentList.appendChild(item);
+            });
+        }
+
+        attachmentsInput.addEventListener('change', (e) => {
+            Array.from(e.target.files).forEach(file => {
+                const totalSize = Array.from(dt.files).reduce((sum, f) => sum + f.size, 0) + file.size;
+                if (totalSize <= MAX_TOTAL_SIZE) {
+                    dt.items.add(file);
+                } else {
+                    alert('Total attachment size exceeds 10MB');
+                }
+            });
+            attachmentsInput.files = dt.files;
+            updateAttachmentList();
+        });
+
         // Initial render
         renderPackages(parseInt(qtyInput.value, 10));
 
@@ -181,14 +240,10 @@
 
         // Validation alerts on blur
         emailInput.addEventListener('blur', () => {
-            if (emailInput.value && !emailInput.checkValidity()) {
-                alert(emailInput.title);
-            }
+            if (emailInput.value && !emailInput.checkValidity()) alert(emailInput.title);
         });
         phoneInput.addEventListener('blur', () => {
-            if (phoneInput.value && !phoneInput.checkValidity()) {
-                alert(phoneInput.title);
-            }
+            if (phoneInput.value && !phoneInput.checkValidity()) alert(phoneInput.title);
         });
 
         // Enable send button only when valid
@@ -220,8 +275,12 @@
             if (phoneEsc) body += `Contact Phone: ${phoneEsc}%0D%0A`;
             const delivery = encodeURIComponent(document.getElementById('deliveryAddress').value);
             body += `Delivery Address: ${delivery}`;
-
-            const mailtoLink = `mailto:ncrs-merak@merak.com?subject=Pickup Request&body=${body}`;
+            // List attachments in body
+            if (dt.files.length) {
+                const names = Array.from(dt.files).map(f => f.name).join(', ');
+                body += `%0D%0AAttached files: ${encodeURIComponent(names)}`;
+            }
+            const mailtoLink = `mailto:ncrs@merak-hvac.com?subject=Pickup Request&body=${body}`;
             window.location.href = mailtoLink;
         });
     </script>
