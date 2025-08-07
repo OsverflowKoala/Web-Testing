@@ -9,19 +9,17 @@
             font-family: Arial, sans-serif;
             background-color: #f4f4f4;
             margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+            padding: 2rem; /* allow space at top */
+            /* remove flex centering to avoid cutting logo */
         }
         .container {
             background-color: #fff;
-            padding: 3rem 2rem 2rem; /* extra top padding to ensure logo is visible */
+            padding: 2rem;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             width: 100%;
             max-width: 500px;
+            margin: 0 auto; /* center horizontally */
         }
         .logo {
             display: block;
@@ -148,4 +146,3 @@
     </script>
 </body>
 </html>
-
