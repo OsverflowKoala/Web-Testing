@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pickup Request Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+        .logo {
+            display: block;
+            margin: 0 auto 1rem;
+            max-width: 200px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: #333;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin-bottom: 0.5rem;
+            color: #555;
+            font-size: 0.9rem;
+        }
+        input, textarea, select {
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        .row {
+            display: flex;
+            gap: 1rem;
+        }
+        .row .field {
+            flex: 1;
+        }
+        button {
+            padding: 0.75rem;
+            background-color: #0073e6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        button:disabled {
+            background-color: #999;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Company Logo: replace src with actual logo path -->
+        <img src="logo-merak.png" alt="MERAK Logo" class="logo">
+        <h1>Request Pickup of Defective Materials</h1>
+        <form id="pickup-form">
+            <label for="ref">Non-Conformity Reference Number</label>
+            <input type="text" id="ref" name="ref" required>
+
+            <div class="row">
+                <div class="field">
+                    <label for="size">Package Size (e.g., 50x30x20 cm)</label>
+                    <input type="text" id="size" name="size" required>
+                </div>
+                <div class="field">
+                    <label for="weight">Weight (kg)</label>
+                    <input type="number" id="weight" name="weight" step="0.01" required>
+                </div>
+            </div>
+
+            <label for="quantity">Number of Packages</label>
+            <input type="number" id="quantity" name="quantity" min="1" required>
+
+            <label for="pickupAddress">Pickup Address</label>
+            <textarea id="pickupAddress" name="pickupAddress" rows="2" required placeholder="Customer's pickup address"></textarea>
+
+            <label for="contactEmail">Contact Email</label>
+            <input type="email" id="contactEmail" name="contactEmail">
+
+            <label for="contactPhone">Contact Phone</label>
+            <input type="tel" id="contactPhone" name="contactPhone">
+
+            <label for="deliveryAddress">Delivery Address</label>
+            <textarea id="deliveryAddress" name="deliveryAddress" rows="2" required>calle miguel faraday 1, Getafe, Madrid</textarea>
+
+            <button type="submit" id="sendBtn" disabled>Generate Email</button>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById('pickup-form');
+        const sendBtn = document.getElementById('sendBtn');
+
+        // Enable send button only when form is valid and contact info is provided
+        form.addEventListener('input', () => {
+            const isValid = form.reportValidity();
+            const email = form.contactEmail.value.trim();
+            const phone = form.contactPhone.value.trim();
+            sendBtn.disabled = !(isValid && (email || phone));
+        });
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const ref = encodeURIComponent(form.ref.value);
+            const size = encodeURIComponent(form.size.value);
+            const weight = encodeURIComponent(form.weight.value);
+            const qty = encodeURIComponent(form.quantity.value);
+            const pickup = encodeURIComponent(form.pickupAddress.value);
+            const email = encodeURIComponent(form.contactEmail.value);
+            const phone = encodeURIComponent(form.contactPhone.value);
+            const delivery = encodeURIComponent(form.deliveryAddress.value);
+
+            let body = `Reference Number: ${ref}%0D%0A`;
+            body += `Package Size: ${size}%0D%0A`;
+            body += `Weight: ${weight} kg%0D%0A`;
+            body += `Quantity: ${qty}%0D%0A`;
+            body += `Pickup Address: ${pickup}%0D%0A`;
+            if (email) body += `Contact Email: ${email}%0D%0A`;
+            if (phone) body += `Contact Phone: ${phone}%0D%0A`;
+            body += `Delivery Address: ${delivery}`;
+
+            const mailtoLink = `mailto:?subject=Pickup Request - ${ref}&body=${body}`;
+            window.location.href = mailtoLink;
+        });
+    </script>
+</body>
+</html>
