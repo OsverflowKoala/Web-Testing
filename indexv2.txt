@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pickup Request Form</title>
+  <style>
+    body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 2rem; }
+    .container { background-color: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 100%; max-width: 800px; margin: 0 auto; }
+    .logo { display: block; margin: 0 auto 1rem; max-width: 200px; }
+    h1 { text-align: center; margin-bottom: 0.5rem; color: #333; }
+    .instructions { text-align: justify; margin-bottom: 1.5rem; color: #555; font-size: 0.95rem; }
+    .instructions ul { margin: 0; padding-left: 1.2rem; }
+    form { display: flex; flex-direction: column; }
+    label { margin-bottom: 0.25rem; color: #555; font-size: 0.9rem; }
+    input, textarea { width: 100%; margin-bottom: 1rem; padding: 0.75rem; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; box-sizing: border-box; }
+    .row { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .row .field { flex: 1; display: flex; flex-direction: column; }
+    button { padding: 0.75rem; background-color: #0073e6; color: white; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; }
+    button:disabled { background-color: #999; cursor: not-allowed; }
+    #testOutput { display:none; margin-top: 1rem; background:#fafafa; border:1px solid #e5e5e5; padding:0.75rem; border-radius:6px; font-family: ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img src="logo-merak.png" alt="MERAK Logo" class="logo" />
+    <h1>Pickup Request of Defective Materials</h1>
+    <div style="height: 16px;"></div>
+    <div class="instructions">
+      <ul>
+        <li><strong>Fill in all fields.</strong> Every field is required and validated.</li>
+        <li><strong>Click "Generate Email".</strong> An automatic email will be created with all your information.</li>
+        <li><strong>Attach PDFs manually.</strong> Add the non-conformance PDF(s) before sending.</li>
+        <li><strong>Confirmation & RMA.</strong> After the carrier confirms the pickup, you will receive a confirmation email including the RMA. Print it and attach it physically to the package(s) before delivery.</li>
+      </ul>
+    </div>
+
+    <form id="pickup-form">
+      <!-- Customer Name -->
+      <label for="customerName">Customer Name</label>
+      <input type="text" id="customerName" name="customerName" required list="customerOptions" placeholder="e.g., Alstom, CAF, Stadler, Siemens" />
+      <datalist id="customerOptions">
+        <option value="Alstom"></option>
+        <option value="CAF"></option>
+        <option value="Stadler"></option>
+        <option value="Siemens"></option>
+      </datalist>
+
+      <!-- Number of Packages -->
+      <label for="quantity">Number of Packages</label>
+      <input type="number" id="quantity" name="quantity" min="1" value="1" required placeholder="e.g., 1" />
+
+      <!-- Package details container -->
+      <div id="packages-container"></div>
+
+      <!-- Pickup Address -->
+      <label>Pickup Address</label>
+      <div class="row">
+        <div class="field">
+          <label for="pickupStreet">Street Address</label>
+          <input type="text" id="pickupStreet" name="pickupStreet" required placeholder="e.g., 123 Elm Street" />
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="pickupPostal">Postal Code</label>
+          <input type="text" id="pickupPostal" name="pickupPostal" required placeholder="e.g., 28001" />
+        </div>
+        <div class="field">
+          <label for="pickupCity">City</label>
+          <input type="text" id="pickupCity" name="pickupCity" required placeholder="e.g., Madrid" />
+        </div>
+        <div class="field">
+          <label for="pickupCountry">Country</label>
+          <input type="text" id="pickupCountry" name="pickupCountry" required placeholder="e.g., Spain" />
+        </div>
+      </div>
+
+      <!-- Contact Info -->
+      <div class="row">
+        <div class="field">
+          <label for="contactEmail">Contact Email</label>
+          <input type="email" id="contactEmail" name="contactEmail" pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$" title="Please enter a valid email address" placeholder="e.g., user@example.com" />
+        </div>
+        <div class="field">
+          <label for="contactPhone">Contact Phone</label>
+          <input type="tel" id="contactPhone" name="contactPhone" pattern="\+\d{1,3}\s?\d{6,14}" title="Include country code, e.g., +34 612345678" placeholder="e.g., +34 612345678" />
+        </div>
+      </div>
+
+      <!-- Delivery Address -->
+      <label for="deliveryAddress">Delivery Address</label>
+      <textarea id="deliveryAddress" name="deliveryAddress" rows="2" required placeholder="e.g., C. Miguel Faraday, 1, 28906 Getafe, Madrid">C. Miguel Faraday, 1, 28906 Getafe, Madrid</textarea>
+
+      <button type="submit" id="sendBtn" disabled>Generate Email</button>
+    </form>
+
+    <div id="testOutput"></div>
+  </div>
+
+  <script>
+    // DOM
+    const form = document.getElementById('pickup-form');
+    const sendBtn = document.getElementById('sendBtn');
+    const qtyInput = document.getElementById('quantity');
+    const packagesContainer = document.getElementById('packages-container');
+    const emailInput = document.getElementById('contactEmail');
+    const phoneInput = document.getElementById('contactPhone');
+    const testOutput = document.getElementById('testOutput');
+
+    const MAIL_TO = 'ncrs@merak-hvac.com';
+
+    // Render dynamic package rows (clean version)
+    function renderPackages(count) {
+      packagesContainer.innerHTML = '';
+      for (let i = 1; i <= count; i++) {
+        const block = document.createElement('div');
+        block.className = 'row';
+        block.innerHTML = `
+          <div class="field">
+            <label for="ref-${i}">Non-Conformity Reference #${i}</label>
+            <input type="text" id="ref-${i}" name="ref-${i}" required placeholder="e.g., NCR12345" />
+          </div>
+          <div class="field">
+            <label for="size-${i}">Package Size #${i}</label>
+            <input type="text" id="size-${i}" name="size-${i}" placeholder="e.g., 50x30x20 cm" pattern="^\\s*\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?\\s*cm\\s*$" title="Use format LxWxH cm, e.g., 50x30x20 cm" required />
+          </div>
+          <div class="field">
+            <label for="weight-${i}">Weight #${i} (kg)</label>
+            <input type="number" id="weight-${i}" name="weight-${i}" step="0.01" placeholder="e.g., 12.5" required />
+          </div>`;
+        packagesContainer.appendChild(block);
+      }
+    }
+
+    // Attach validation for size fields (pattern check + alert on blur)
+    function attachSizeValidation() {
+      const sizeInputs = packagesContainer.querySelectorAll('input[id^="size-"]');
+      sizeInputs.forEach(inp => {
+        inp.addEventListener('blur', () => {
+          if (inp.value && !inp.checkValidity()) {
+            alert('Package Size must follow the format LxWxH cm, e.g., 50x30x20 cm');
+          }
+        });
+      });
+    }
+
+    // Initial render
+    renderPackages(parseInt(qtyInput.value, 10));
+    attachSizeValidation();
+
+    // Update on quantity change
+    qtyInput.addEventListener('change', () => {
+      const val = parseInt(qtyInput.value, 10);
+      if (val >= 1) {
+        renderPackages(val);
+        attachSizeValidation();
+      }
+    });
+
+    // Validation alerts on blur
+    emailInput.addEventListener('blur', () => {
+      if (emailInput.value && !emailInput.checkValidity()) alert(emailInput.title);
+    });
+    phoneInput.addEventListener('blur', () => {
+      if (phoneInput.value && !phoneInput.checkValidity()) alert(phoneInput.title);
+    });
+
+    // Enable send button only when valid (and at least one contact method)
+    form.addEventListener('input', () => {
+      const isValid = form.checkValidity();
+      const hasContact = emailInput.value.trim() || phoneInput.value.trim();
+      sendBtn.disabled = !(isValid && hasContact);
+    });
+
+    // Build mailto safely (encode once at the end)
+    function buildMailto() {
+      const lines = [];
+      lines.push(`Customer Name: ${document.getElementById('customerName').value.trim()}`);
+
+      const pkgCount = parseInt(qtyInput.value, 10);
+      for (let i = 1; i <= pkgCount; i++) {
+        const ref = document.getElementById(`ref-${i}`).value.trim();
+        const size = document.getElementById(`size-${i}`).value.trim();
+        const weight = document.getElementById(`weight-${i}`).value.trim();
+        lines.push(`Package ${i} - Reference: ${ref}, Size: ${size}, Weight: ${weight} kg`);
+      }
+
+      const street = document.getElementById('pickupStreet').value.trim();
+      const postal = document.getElementById('pickupPostal').value.trim();
+      const city = document.getElementById('pickupCity').value.trim();
+      const country = document.getElementById('pickupCountry').value.trim();
+      lines.push(`Pickup Address: ${street}, ${postal} ${city}, ${country}`);
+
+      const emailVal = emailInput.value.trim();
+      const phoneVal = phoneInput.value.trim();
+      if (emailVal) lines.push(`Contact Email: ${emailVal}`);
+      if (phoneVal) lines.push(`Contact Phone: ${phoneVal}`);
+
+      const delivery = document.getElementById('deliveryAddress').value.trim();
+      lines.push(`Delivery Address: ${delivery}`);
+
+      const subject = 'Pickup Request';
+      const body = lines.join('\r\n');
+      const href = `mailto:${MAIL_TO}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      return { href, body };
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const { href, body } = buildMailto();
+
+      // Test helper: if URL has ?test=1 show preview instead of opening mail client
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('test') === '1') {
+        testOutput.style.display = 'block';
+        testOutput.textContent = `TO: ${MAIL_TO}\nSUBJECT: Pickup Request\n\n${body}\n\n— Remember to attach the PDFs manually before sending —`;
+        return; // do not open mail client
+      }
+
+      window.location.href = href;
+    });
+
+    // Quick self-tests (only when ?test=1)
+    (function runQuickTestsIfNeeded() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('test') !== '1') return;
+      const out = [];
+      const encNL = encodeURIComponent('\r\n');
+      out.push(`${encNL === '%0D%0A' ? '✅' : '❌'} Newlines encode as %0D%0A`);
+      const { href } = buildMailto();
+      out.push(`${href.startsWith('mailto:') ? '✅' : '❌'} Mailto starts with mailto:`);
+      out.push(`${/[?&]subject=/.test(href) ? '✅' : '❌'} Subject param present`);
+      out.push(`${/[?&]body=/.test(href) ? '✅' : '❌'} Body param present`);
+
+      // DOM tests: ensure package inputs exist for current quantity
+      const q = parseInt(qtyInput.value, 10);
+      let domOk = true;
+      for (let i = 1; i <= q; i++) {
+        const hasRef = !!document.getElementById(`ref-${i}`);
+        const hasSize = !!document.getElementById(`size-${i}`);
+        const hasWeight = !!document.getElementById(`weight-${i}`);
+        domOk = domOk && hasRef && hasSize && hasWeight;
+      }
+      out.push(`${domOk ? '✅' : '❌'} Package rows render (ref/size/weight present)`);
+
+      testOutput.style.display = 'block';
+      testOutput.textContent = out.join('\n');
+    })();
+  </script>
+</body>
+</html>
+
